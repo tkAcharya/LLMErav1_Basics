@@ -19,6 +19,8 @@
     --c0-soft: rgba(70,224,196,0.16);
     --c1: #FF9551;       /* outer ring / class 1 */
     --c1-soft: rgba(255,149,81,0.16);
+    --c2: #A78BFA;       /* third category — verbs (S1-3) */
+    --c2-soft: rgba(167,139,250,0.16);
     --win: #D4F76A;       /* reserved: the one bold color, for the proof number */
     --stuck: #E8607B;
     --radius: 14px;
@@ -171,6 +173,7 @@
     line-height: 1.1;
   }
   .badge-acc.win-color{ color: var(--win); }
+  .badge-acc.dual{ font-size: 19px; }
   .badge-label{
     font-family: var(--mono);
     font-size: 10px;
@@ -288,6 +291,58 @@
   }
   .mp-note b{ color: var(--text); font-weight: 500; }
 
+  /* ---------- S1-3: nearest-neighbor chips ---------- */
+  .nn-chips{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .chip{
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    color: var(--text-dim);
+    background: var(--surface-2);
+  }
+  .chip b{ color: var(--text); font-weight: 500; }
+  .chip.animal{ border-color: rgba(70,224,196,0.45); }
+  .chip.fruit{ border-color: rgba(255,149,81,0.45); }
+  .chip.verb{ border-color: rgba(167,139,250,0.45); }
+
+  .grammar-note{
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ---------- page status (initial training) ---------- */
+  .page-status{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+  .page-status::before{
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c1);
+    box-shadow: 0 0 0 3px var(--c1-soft);
+    animation: pulseDot 1.1s ease-in-out infinite;
+  }
+  @keyframes pulseDot{ 50%{ opacity: 0.35; } }
+  @media (prefers-reduced-motion: reduce){
+    .page-status::before{ animation: none; }
+  }
+
   /* ---------- footer ---------- */
   .footer{
     margin-top: 36px;
@@ -311,6 +366,9 @@
   .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
   .dot.c0{ background: var(--c0); }
   .dot.c1{ background: var(--c1); }
+  .dot.c2{ background: var(--c2); }
+
+  .canvas-wrap.embed{ aspect-ratio: 16 / 10; }
 
   button.retrain{
     font-family: var(--mono);
@@ -350,6 +408,8 @@
 <body>
 
 <div class="wrap">
+
+<div class="page-status" id="page-status">training all four proofs in your browser — this takes a few seconds…</div>
 
 <section class="proof" id="s1-1">
 
@@ -528,6 +588,185 @@
     Same 300 noisy points. Same Adam optimizer, same learning rate, same number of steps, same
     2→8→8→8→8→1 shape for the last two. <b>Only the activation changed</b> between them — and
     depth alone, without it, never beat the single line.
+  </p>
+
+</section>
+
+<div class="divider"><span>next proof</span></div>
+
+<section class="proof" id="s1-3">
+
+  <div class="eyebrow">s1-3 · embeddings — proof by demonstration</div>
+  <h2 class="title">S1-3 · Embeddings learn similarity from nothing but next-token.</h2>
+  <p class="claim">
+    An embedding table is just a lookup of numbers — nobody tells it that <b>cat</b>, <b>dog</b>,
+    and <b>cow</b> are related. Train it on exactly one task, <b>predict the next token</b>, in a
+    toy grammar where the object slot is drawn uniformly regardless of verb or species — so
+    "cow eat mango" and "cat chase apple" are both fair game, no real-world meaning involved.
+    The only thing that makes tokens alike is that they're statistically interchangeable.
+    Project the learned 8-dimensional vectors to 2D and the three categories fall into their
+    own corners anyway.
+  </p>
+
+  <div class="panel" style="margin-top:44px;">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Learned embedding space</div>
+        <div class="panel-arch">embedding(10×8) → linear(8→10) → softmax · trained only on (prev token, next token) pairs</div>
+      </div>
+      <div class="badge">
+        <div class="badge-acc win-color" id="acc-emb">—</div>
+        <div class="badge-label">same-category nearest neighbors</div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap embed pre-reveal" id="wrap-embed">
+      <div id="embed-plot" style="width:100%; height:100%;"></div>
+      <div class="sweep" id="sweep-embed"></div>
+    </div>
+
+    <div class="legend" style="margin-top:14px;">
+      <span><i class="dot c0"></i>animals — cat, dog, cow</span>
+      <span><i class="dot c1"></i>fruits — apple, mango</span>
+      <span><i class="dot c2"></i>verbs — eat, chase, see</span>
+    </div>
+
+    <div class="nn-chips" id="nn-chips"></div>
+
+    <div class="grammar-note">
+      grammar: &lt;S&gt; animal verb noun &lt;E&gt; &nbsp;·&nbsp; noun ~ uniform(animals ∪ fruits), independent of verb or subject
+    </div>
+    <div class="grammar-note" id="corpus-sample"></div>
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <span>10-token vocabulary · 2000 sampled sentences · 8000 next-token pairs</span>
+    </div>
+    <button id="retrain3" class="retrain">↻ regenerate &amp; retrain</button>
+  </div>
+
+  <p class="caption">
+    No labels, no similarity targets, no category ever supplied. <b>Only next-token prediction</b>
+    shaped this space — clustering by category is a side effect, not the objective.
+  </p>
+
+</section>
+
+<div class="divider"><span>next proof</span></div>
+
+<section class="proof" id="s1-4">
+
+  <div class="eyebrow">s1-4 · generalization — proof by demonstration</div>
+  <h2 class="title">S1-4 · Memorization vs. generalization, and data closes the gap.</h2>
+  <p class="claim">
+    Give a high-capacity network only 20 noisy examples and it will happily drive training loss
+    to ~0 — memorizing every quirk, including the noise. On <b>held-out</b> data it does far worse,
+    because noise doesn't repeat. Keep the exact same architecture and the exact same training
+    budget, and just grow the dataset to 200, then 2000: the model can no longer afford to
+    memorize idiosyncrasies, so it gets pushed toward the actual signal — and the train/test
+    gap collapses.
+  </p>
+
+  <div class="panels3">
+
+    <!-- N = 20 -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">N = 20</div>
+          <div class="panel-arch">2→16→16→1 · ReLU</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc dual" id="train-acc-n20">—</div>
+          <div class="badge-label">train acc</div>
+          <div class="badge-acc dual" id="test-acc-n20" style="margin-top:8px;">—</div>
+          <div class="badge-label">test acc</div>
+          <div class="tag" id="gap-tag-n20">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-n20">
+        <canvas id="canvas-n20" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-n20"></div>
+      </div>
+      <div class="formula">20 training points</div>
+    </div>
+
+    <!-- N = 200 -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">N = 200</div>
+          <div class="panel-arch">2→16→16→1 · ReLU</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc dual" id="train-acc-n200">—</div>
+          <div class="badge-label">train acc</div>
+          <div class="badge-acc dual" id="test-acc-n200" style="margin-top:8px;">—</div>
+          <div class="badge-label">test acc</div>
+          <div class="tag" id="gap-tag-n200">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-n200">
+        <canvas id="canvas-n200" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-n200"></div>
+      </div>
+      <div class="formula">200 training points</div>
+    </div>
+
+    <!-- N = 2000 -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">N = 2000</div>
+          <div class="panel-arch">2→16→16→1 · ReLU</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc dual" id="train-acc-n2000">—</div>
+          <div class="badge-label">train acc</div>
+          <div class="badge-acc dual" id="test-acc-n2000" style="margin-top:8px;">—</div>
+          <div class="badge-label">test acc</div>
+          <div class="tag" id="gap-tag-n2000">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-n2000">
+        <canvas id="canvas-n2000" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-n2000"></div>
+      </div>
+      <div class="formula">2000 training points</div>
+    </div>
+
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Generalization gap vs. dataset size</div>
+        <div class="panel-arch">train accuracy and held-out test accuracy at each N · same model, same training budget</div>
+      </div>
+    </div>
+    <div class="canvas-wrap embed pre-reveal" id="wrap-gap">
+      <div id="gap-chart" style="width:100%; height:100%;"></div>
+      <div class="sweep" id="sweep-gap"></div>
+    </div>
+    <div class="legend" style="margin-top:14px;">
+      <span><i class="dot c1"></i>train accuracy</span>
+      <span><i class="dot c0"></i>test accuracy (held out)</span>
+      <span>┄ Bayes-optimal ceiling</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <span>noisy 2-blob classification · 1000-point held-out test set, fixed across all three runs</span>
+    </div>
+    <button id="retrain4" class="retrain">↻ regenerate &amp; retrain</button>
+  </div>
+
+  <p class="caption">
+    Same 2→16→16→1 ReLU network, same 1000 training steps, same noisy task at every size —
+    <b>only N changed</b>. The gap between memorizing and generalizing closes almost entirely
+    by N=2000, with both curves converging on the same Bayes-optimal ceiling neither can beat.
   </p>
 
 </section>
@@ -820,6 +1059,233 @@
     return chain; // sizes[0] x sizes[L] -> here, 2 x 1
   }
 
+  // ==================== S1-3: embeddings from next-token prediction ====================
+  const VOCAB = ['<S>','<E>','cat','dog','cow','apple','mango','eat','chase','see'];
+  const TOK_ID = {}; VOCAB.forEach((t,i) => TOK_ID[t] = i);
+  const VVOC = VOCAB.length;
+  const CATEGORY = {
+    cat:'animal', dog:'animal', cow:'animal',
+    apple:'fruit', mango:'fruit',
+    eat:'verb', chase:'verb', see:'verb',
+  };
+  const ANIMALS = ['cat','dog','cow'];
+  const FRUITS = ['apple','mango'];
+  const VERBS = ['eat','chase','see'];
+  const NOUNS = [...ANIMALS, ...FRUITS]; // object slot draws uniformly from here, regardless of verb
+  const contentTokens = ['cat','dog','cow','apple','mango','eat','chase','see'];
+  const CAT_COLOR = { animal: 'rgb(70,224,196)', fruit: 'rgb(255,149,81)', verb: 'rgb(167,139,250)' };
+
+  function pickFrom(rng, arr){ return arr[Math.floor(rng() * arr.length)]; }
+
+  // sample sentences and emit consecutive (prev, next) token-id pairs
+  function makeCorpus(seed, nSentences){
+    const rng = mulberry32(seed);
+    const pairs = [], samples = [];
+    for (let s = 0; s < nSentences; s++){
+      const subj = pickFrom(rng, ANIMALS);
+      const verb = pickFrom(rng, VERBS);
+      const obj  = pickFrom(rng, NOUNS);
+      const seq = ['<S>', subj, verb, obj, '<E>'];
+      for (let i = 0; i < seq.length - 1; i++) pairs.push([TOK_ID[seq[i]], TOK_ID[seq[i+1]]]);
+      if (s < 5) samples.push(`${subj} ${verb} ${obj}`);
+    }
+    return { pairs, samples };
+  }
+
+  function softmaxArr(logits){
+    let m = -Infinity; for (const z of logits) if (z > m) m = z;
+    const ex = logits.map(z => Math.exp(z - m));
+    const s = ex.reduce((a,b) => a+b, 0);
+    return ex.map(e => e/s);
+  }
+
+  // embedding(V x D) -> linear(D x V) + bias(V) -> softmax, cross-entropy on next-token
+  function trainEmbedding(pairs, D, epochs, lr, seed){
+    const rng = mulberry32(seed);
+    const nParams = VVOC*D + D*VVOC + VVOC;
+    const params = new Float64Array(nParams);
+    for (let i = 0; i < VVOC*D; i++) params[i] = gaussian(rng) * 0.3;          // Emb
+    for (let i = 0; i < D*VVOC; i++) params[VVOC*D + i] = gaussian(rng) * 0.3; // W
+    const offEmb = 0, offW = VVOC*D, offB = VVOC*D + D*VVOC;
+    const grads = new Float64Array(nParams);
+    const opt = makeAdam(nParams, lr);
+    const N = pairs.length;
+    const emb = new Float64Array(D), logits = new Float64Array(VVOC);
+
+    for (let e = 0; e < epochs; e++){
+      grads.fill(0);
+      for (let k = 0; k < N; k++){
+        const prev = pairs[k][0], next = pairs[k][1];
+        for (let d = 0; d < D; d++) emb[d] = params[offEmb + prev*D + d];
+        for (let v = 0; v < VVOC; v++){
+          let s = params[offB + v];
+          for (let d = 0; d < D; d++) s += emb[d] * params[offW + d*VVOC + v];
+          logits[v] = s;
+        }
+        const p = softmaxArr(Array.from(logits));
+        for (let v = 0; v < VVOC; v++){
+          let dl = (p[v] - (v === next ? 1 : 0)) / N;
+          grads[offB + v] += dl;
+          for (let d = 0; d < D; d++) grads[offW + d*VVOC + v] += emb[d]*dl;
+        }
+        for (let d = 0; d < D; d++){
+          let s = 0;
+          for (let v = 0; v < VVOC; v++) s += (p[v] - (v === next ? 1 : 0)) / N * params[offW + d*VVOC + v];
+          grads[offEmb + prev*D + d] += s;
+        }
+      }
+      adamStep(opt, params, grads);
+    }
+
+    const Emb = [];
+    for (let t = 0; t < VVOC; t++){
+      const row = [];
+      for (let d = 0; d < D; d++) row.push(params[offEmb + t*D + d]);
+      Emb.push(row);
+    }
+    return Emb;
+  }
+
+  function euclid(a, b){ let s = 0; for (let i = 0; i < a.length; i++){ const d = a[i]-b[i]; s += d*d; } return Math.sqrt(s); }
+
+  // ---- top-2 PCA via power iteration with deflation (plain linear algebra, no library) ----
+  function meanVec(X){
+    const Dm = X[0].length, n = X.length, m = new Array(Dm).fill(0);
+    for (const row of X) for (let d = 0; d < Dm; d++) m[d] += row[d]/n;
+    return m;
+  }
+  function covMatrix(Xc){
+    const Dm = Xc[0].length;
+    const C = Array.from({length:Dm}, () => new Array(Dm).fill(0));
+    for (const row of Xc) for (let i = 0; i < Dm; i++) for (let j = 0; j < Dm; j++) C[i][j] += row[i]*row[j];
+    for (let i = 0; i < Dm; i++) for (let j = 0; j < Dm; j++) C[i][j] /= Xc.length;
+    return C;
+  }
+  function matVec(M, v){ return M.map(row => row.reduce((s,x,i) => s + x*v[i], 0)); }
+  function vecNorm(v){ return Math.sqrt(v.reduce((s,x) => s + x*x, 0)); }
+  function powerIteration(M, iters){
+    let v = M.map((_,i) => (i%2===0 ? 1 : -1) + 0.001*i);
+    for (let it = 0; it < iters; it++){ v = matVec(M, v); const n = vecNorm(v) || 1; v = v.map(x => x/n); }
+    const Mv = matVec(M, v);
+    const lambda = v.reduce((s,x,i) => s + x*Mv[i], 0);
+    return { vec: v, val: lambda };
+  }
+  function deflateMat(M, vec, val){
+    const Dm = M.length;
+    const out = Array.from({length:Dm}, () => new Array(Dm).fill(0));
+    for (let i = 0; i < Dm; i++) for (let j = 0; j < Dm; j++) out[i][j] = M[i][j] - val*vec[i]*vec[j];
+    return out;
+  }
+  function pca2(X){
+    const m = meanVec(X);
+    const Xc = X.map(row => row.map((x,i) => x - m[i]));
+    const C = covMatrix(Xc);
+    const { vec: v1, val: l1 } = powerIteration(C, 200);
+    const C2 = deflateMat(C, v1, l1);
+    const { vec: v2 } = powerIteration(C2, 200);
+    return Xc.map(row => [ row.reduce((s,x,i) => s + x*v1[i], 0), row.reduce((s,x,i) => s + x*v2[i], 0) ]);
+  }
+
+  function scaleToPlot(coords, w, h, pad){
+    const xs = coords.map(c => c[0]), ys = coords.map(c => c[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const spanX = Math.max(maxX - minX, 1e-6), spanY = Math.max(maxY - minY, 1e-6);
+    return coords.map(([x,y]) => [
+      pad + (x - minX)/spanX * (w - 2*pad),
+      h - pad - (y - minY)/spanY * (h - 2*pad),
+    ]);
+  }
+
+  function renderEmbeddingPlot(container, coordsByToken, nnByToken){
+    const W = 560, H = 340;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">`;
+    for (const t of contentTokens){
+      const [x1,y1] = coordsByToken[t];
+      const [x2,y2] = coordsByToken[nnByToken[t].neighbor];
+      svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${CAT_COLOR[CATEGORY[t]]}" stroke-opacity="0.35" stroke-width="1.5" stroke-linecap="round"/>`;
+    }
+    contentTokens.forEach((t, i) => {
+      const [x,y] = coordsByToken[t];
+      const dy = (i % 2 === 0) ? 19 : -11;
+      svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${CAT_COLOR[CATEGORY[t]]}" stroke="rgba(10,14,19,0.7)" stroke-width="1.5"/>`;
+      svg += `<text x="${(x+10).toFixed(1)}" y="${(y+dy).toFixed(1)}" font-family="JetBrains Mono, ui-monospace, monospace" font-size="13" fill="#E8EDF1">${t}</text>`;
+    });
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  }
+
+  // ==================== S1-4: memorization vs. generalization ====================
+  // Two overlapping Gaussian blobs (means at x=-1 / x=+1, std=1) — a genuinely
+  // learnable task with an irreducible Bayes-optimal error rate, since the
+  // classes truly overlap. The same over-parameterized net (reusing trainDeepNet
+  // from S1-2) is trained at three dataset sizes with the *same* architecture and
+  // *same* number of steps; only N changes.
+  function makeBlobs(seed, n){
+    const rng = mulberry32(seed);
+    const X = [], y = [];
+    for (let i = 0; i < n; i++){
+      const cls = rng() < 0.5 ? 0 : 1;
+      const cx = cls === 0 ? -1 : 1;
+      X.push([cx + gaussian(rng), gaussian(rng)]);
+      y.push(cls);
+    }
+    return { X, y };
+  }
+
+  function accOn(model, X, y){
+    let c = 0;
+    for (let i = 0; i < X.length; i++) if ((model.predict(X[i][0], X[i][1]) > 0.5 ? 1 : 0) === y[i]) c++;
+    return c / X.length;
+  }
+
+  function classifyGap(gapPP){
+    if (gapPP > 15) return { label: 'overfit', cls: 'stuck' };
+    if (gapPP > 5)  return { label: 'closing', cls: 'partial' };
+    return { label: 'closed', cls: 'separated' };
+  }
+
+  function renderGapChart(container, results, bayesAcc){
+    const W = 600, H = 375, ML = 54, MR = 24, MT = 26, MB = 40;
+    const YMIN = 0.45, YMAX = 1.04;
+    const sx = (N) => ML + (Math.log10(N) - Math.log10(20)) / (Math.log10(2000) - Math.log10(20)) * (W-ML-MR);
+    const sy = (a) => H-MB - (a-YMIN)/(YMAX-YMIN) * (H-MT-MB);
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">`;
+
+    for (let pct = 50; pct <= 100; pct += 10){
+      const y = sy(pct/100);
+      svg += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+      svg += `<text x="${ML-10}" y="${(y+4).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11" fill="#7C8896">${pct}%</text>`;
+    }
+
+    const yB = sy(bayesAcc);
+    svg += `<line x1="${ML}" y1="${yB.toFixed(1)}" x2="${W-MR}" y2="${yB.toFixed(1)}" stroke="#7C8896" stroke-width="1.4" stroke-dasharray="5,4"/>`;
+    svg += `<text x="${W-MR}" y="${(yB-7).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11" fill="#7C8896">Bayes-optimal ≈ ${(bayesAcc*100).toFixed(1)}%</text>`;
+
+    results.forEach(r => {
+      const x = sx(r.N);
+      svg += `<text x="${x.toFixed(1)}" y="${H-14}" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12" fill="#E8EDF1">N=${r.N}</text>`;
+      const yTrain = sy(r.trainAcc), yTest = sy(r.testAcc);
+      svg += `<line x1="${x.toFixed(1)}" y1="${yTrain.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yTest.toFixed(1)}" stroke="#D4F76A" stroke-width="2" stroke-opacity="0.55"/>`;
+      const gapPP = (r.trainAcc - r.testAcc) * 100;
+      const midY = (yTrain + yTest) / 2;
+      const labelX = Math.min(x + 8, W - MR - 46);
+      svg += `<text x="${labelX.toFixed(1)}" y="${(midY+4).toFixed(1)}" font-family="JetBrains Mono, ui-monospace, monospace" font-size="11.5" fill="#D4F76A">${gapPP>=0?'+':''}${gapPP.toFixed(1)}pp</text>`;
+    });
+
+    const trainPts = results.map(r => `${sx(r.N).toFixed(1)},${sy(r.trainAcc).toFixed(1)}`).join(' ');
+    svg += `<polyline points="${trainPts}" fill="none" stroke="rgb(255,149,81)" stroke-width="2.5"/>`;
+    results.forEach(r => svg += `<circle cx="${sx(r.N).toFixed(1)}" cy="${sy(r.trainAcc).toFixed(1)}" r="5.5" fill="rgb(255,149,81)" stroke="rgba(10,14,19,0.7)" stroke-width="1.5"/>`);
+
+    const testPts = results.map(r => `${sx(r.N).toFixed(1)},${sy(r.testAcc).toFixed(1)}`).join(' ');
+    svg += `<polyline points="${testPts}" fill="none" stroke="rgb(70,224,196)" stroke-width="2.5"/>`;
+    results.forEach(r => svg += `<circle cx="${sx(r.N).toFixed(1)}" cy="${sy(r.testAcc).toFixed(1)}" r="5.5" fill="rgb(70,224,196)" stroke="rgba(10,14,19,0.7)" stroke-width="1.5"/>`);
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  }
+
+
   // ---------------- rendering ----------------
 
   const DOMAIN = 3.3; // data coords span [-DOMAIN, DOMAIN]
@@ -966,8 +1432,6 @@
     }, 30);
   });
 
-  runPipeline(seedCounter);
-
   // ---------------- S1-2 orchestration ----------------
   const els2 = {
     acc1l: document.getElementById('acc-1l'),
@@ -1052,7 +1516,149 @@
     }, 30);
   });
 
-  runPipeline2(seedCounter2);
+  // ---------------- S1-3 orchestration ----------------
+  const els3 = {
+    acc: document.getElementById('acc-emb'),
+    wrap: document.getElementById('wrap-embed'),
+    sweep: document.getElementById('sweep-embed'),
+    plot: document.getElementById('embed-plot'),
+    chips: document.getElementById('nn-chips'),
+    corpus: document.getElementById('corpus-sample'),
+    btn: document.getElementById('retrain3'),
+  };
+
+  function runPipeline3(seed){
+    const { pairs, samples } = makeCorpus(seed, 2000);
+    const D = 8;
+    const Emb = trainEmbedding(pairs, D, 60, 0.05, seed + 500);
+
+    // nearest neighbor in the true D-dimensional embedding space
+    const nnByToken = {};
+    let sameCount = 0;
+    contentTokens.forEach(t => {
+      let best = null, bestD = Infinity;
+      contentTokens.forEach(o => {
+        if (o === t) return;
+        const d = euclid(Emb[TOK_ID[t]], Emb[TOK_ID[o]]);
+        if (d < bestD){ bestD = d; best = o; }
+      });
+      const same = CATEGORY[best] === CATEGORY[t];
+      if (same) sameCount++;
+      nnByToken[t] = { neighbor: best, same };
+    });
+
+    const coords2D = pca2(contentTokens.map(t => Emb[TOK_ID[t]]));
+    const plotCoords = scaleToPlot(coords2D, 560, 340, 56);
+    const coordsByToken = {};
+    contentTokens.forEach((t,i) => coordsByToken[t] = plotCoords[i]);
+
+    renderEmbeddingPlot(els3.plot, coordsByToken, nnByToken);
+
+    els3.acc.textContent = `${sameCount}/${contentTokens.length}`;
+    els3.acc.className = 'badge-acc' + (sameCount === contentTokens.length ? ' win-color' : '');
+
+    els3.chips.innerHTML = contentTokens.map(t => {
+      const nb = nnByToken[t];
+      return `<span class="chip ${CATEGORY[t]}">${t} → <b>${nb.neighbor}</b> ${nb.same ? '✓' : '✗'}</span>`;
+    }).join('');
+
+    els3.corpus.textContent = 'sample sentences from the training corpus: ' + samples.join('  ·  ');
+
+    els3.wrap.classList.add('pre-reveal');
+    void els3.wrap.offsetWidth;
+    reveal(els3.wrap, els3.sweep);
+  }
+
+  let seedCounter3 = 8675;
+  els3.btn.addEventListener('click', () => {
+    els3.btn.disabled = true;
+    els3.btn.textContent = 'training…';
+    seedCounter3 = Math.floor(Math.random() * 1e9);
+    setTimeout(() => {
+      runPipeline3(seedCounter3);
+      els3.btn.disabled = false;
+      els3.btn.textContent = '↻ regenerate & retrain';
+    }, 30);
+  });
+
+  // ---------------- S1-4 orchestration ----------------
+  const els4 = {
+    trainAcc: { 20: document.getElementById('train-acc-n20'), 200: document.getElementById('train-acc-n200'), 2000: document.getElementById('train-acc-n2000') },
+    testAcc:  { 20: document.getElementById('test-acc-n20'),  200: document.getElementById('test-acc-n200'),  2000: document.getElementById('test-acc-n2000') },
+    gapTag:   { 20: document.getElementById('gap-tag-n20'),   200: document.getElementById('gap-tag-n200'),   2000: document.getElementById('gap-tag-n2000') },
+    wrap:     { 20: document.getElementById('wrap-n20'),      200: document.getElementById('wrap-n200'),      2000: document.getElementById('wrap-n2000') },
+    sweep:    { 20: document.getElementById('sweep-n20'),     200: document.getElementById('sweep-n200'),     2000: document.getElementById('sweep-n2000') },
+    canvas:   { 20: document.getElementById('canvas-n20'),    200: document.getElementById('canvas-n200'),    2000: document.getElementById('canvas-n2000') },
+    wrapGap: document.getElementById('wrap-gap'),
+    sweepGap: document.getElementById('sweep-gap'),
+    gapChart: document.getElementById('gap-chart'),
+    btn: document.getElementById('retrain4'),
+  };
+
+  function runPipeline4(seed){
+    const { X: testX, y: testY } = makeBlobs(seed + 9000, 1000);
+    let bayesCorrect = 0;
+    for (let i = 0; i < testX.length; i++) if (((testX[i][0] > 0 ? 1 : 0)) === testY[i]) bayesCorrect++;
+    const bayesAcc = bayesCorrect / testX.length;
+
+    const sizes = [2,16,16,1];
+    const results = [];
+    [20, 200, 2000].forEach(N => {
+      const { X, y } = makeBlobs(seed + N, N);
+      const model = trainDeepNet(X, y, sizes, true, 1000, 0.04, seed + N + 1);
+      const trainAcc = model.acc;
+      const testAcc = accOn(model, testX, testY);
+      results.push({ N, trainAcc, testAcc });
+
+      renderField(els4.canvas[N], model, X, y);
+      els4.trainAcc[N].textContent = (trainAcc*100).toFixed(1) + '%';
+      els4.testAcc[N].textContent  = (testAcc*100).toFixed(1) + '%';
+      const tag = classifyGap((trainAcc - testAcc) * 100);
+      els4.gapTag[N].textContent = tag.label;
+      els4.gapTag[N].className = 'tag ' + tag.cls;
+
+      els4.wrap[N].classList.add('pre-reveal');
+      void els4.wrap[N].offsetWidth;
+      reveal(els4.wrap[N], els4.sweep[N]);
+    });
+
+    renderGapChart(els4.gapChart, results, bayesAcc);
+    els4.wrapGap.classList.add('pre-reveal');
+    void els4.wrapGap.offsetWidth;
+    reveal(els4.wrapGap, els4.sweepGap);
+  }
+
+  let seedCounter4 = 2468;
+  els4.btn.addEventListener('click', () => {
+    els4.btn.disabled = true;
+    els4.btn.textContent = 'training…';
+    seedCounter4 = Math.floor(Math.random() * 1e9);
+    setTimeout(() => {
+      runPipeline4(seedCounter4);
+      els4.btn.disabled = false;
+      els4.btn.textContent = '↻ regenerate & retrain';
+    }, 30);
+  });
+
+  // ---------------- deferred, chained initial training ----------------
+  // All four sections train synchronously and would otherwise block the very
+  // first paint for several seconds. Deferring with setTimeout lets the static
+  // page (including the "—" placeholders) render first, then trains S1-1 through
+  // S1-4 one after another so the browser gets a chance to paint in between.
+  const pageStatus = document.getElementById('page-status');
+  setTimeout(() => {
+    runPipeline(seedCounter);
+    setTimeout(() => {
+      runPipeline2(seedCounter2);
+      setTimeout(() => {
+        runPipeline3(seedCounter3);
+        setTimeout(() => {
+          runPipeline4(seedCounter4);
+          if (pageStatus) pageStatus.style.display = 'none';
+        }, 20);
+      }, 20);
+    }, 20);
+  }, 20);
 })();
 </script>
 </body>
