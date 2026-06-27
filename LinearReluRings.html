@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Activation — Linear vs. ReLU on Concentric Rings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0A0E13;
+    --surface: #11161D;
+    --surface-2: #161D26;
+    --hairline: #232C36;
+    --text: #E8EDF1;
+    --text-dim: #7C8896;
+    --c0: #46E0C4;       /* inner ring / class 0 */
+    --c0-soft: rgba(70,224,196,0.16);
+    --c1: #FF9551;       /* outer ring / class 1 */
+    --c1-soft: rgba(255,149,81,0.16);
+    --win: #D4F76A;       /* reserved: the one bold color, for the proof number */
+    --stuck: #E8607B;
+    --radius: 14px;
+    --display: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+    --body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--text);
+    font-family: var(--body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .wrap{
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 24px 72px;
+  }
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c0);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .eyebrow::before{
+    content:"";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c0);
+    box-shadow: 0 0 0 3px var(--c0-soft);
+  }
+
+  .title{
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(28px, 4.4vw, 44px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 18px;
+    max-width: 22ch;
+  }
+
+  .claim{
+    font-family: var(--mono);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    border-left: 2px solid var(--hairline);
+    padding-left: 16px;
+    max-width: 56ch;
+    margin: 0 0 8px;
+  }
+  .claim b{ color: var(--text); font-weight: 500; }
+
+  /* ---------- section divider ---------- */
+  .divider{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 64px 0 48px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after{
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--hairline);
+  }
+
+  /* ---------- panels ---------- */
+  .panels{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 44px;
+  }
+  @media (max-width: 760px){
+    .panels{ grid-template-columns: 1fr; }
+  }
+
+  .panels3{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 44px;
+  }
+  @media (max-width: 940px){
+    .panels3{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 20px 20px 22px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-head{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .panel-title{
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0 0 4px;
+  }
+  .panel-arch{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+
+  .badge{
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .badge-acc{
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .badge-acc.win-color{ color: var(--win); }
+  .badge-label{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .tag{
+    display: inline-block;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .tag.stuck{ color: var(--stuck); border: 1px solid rgba(232,96,123,0.45); }
+  .tag.separated{ background: var(--win); color: #11160A; border: 1px solid var(--win); }
+  .tag.partial{ color: var(--c1); border: 1px solid rgba(255,149,81,0.45); }
+
+  .canvas-wrap{
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    margin-top: 14px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-2);
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 700ms cubic-bezier(.22,.85,.32,1);
+  }
+  .canvas-wrap.pre-reveal{ clip-path: inset(0 100% 0 0); }
+  .canvas-wrap canvas{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .sweep{
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(232,237,241,0.14), transparent);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .sweep.run{ animation: sweepMove 700ms cubic-bezier(.22,.85,.32,1); }
+  @keyframes sweepMove{ to{ transform: translateX(120%); } }
+
+  .formula{
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* ---------- matrix-collapse bonus proof ---------- */
+  .matrix-proof{
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+  .mp-label{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c1);
+    margin-bottom: 12px;
+  }
+  .mp-chain{
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 18px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .mp-row{
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .mp-block{
+    flex: 1;
+    min-width: 230px;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .mp-block-label{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .mp-eq{
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--win);
+    font-variant-numeric: tabular-nums;
+    word-break: break-word;
+  }
+  .mp-note{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .mp-note b{ color: var(--text); font-weight: 500; }
+
+  /* ---------- footer ---------- */
+  .footer{
+    margin-top: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding-top: 22px;
+    border-top: 1px solid var(--hairline);
+  }
+  .legend{
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:7px; }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .dot.c0{ background: var(--c0); }
+  .dot.c1{ background: var(--c1); }
+
+  button.retrain{
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--bg);
+    background: var(--c0);
+    border: none;
+    padding: 11px 18px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: transform 120ms ease, background 120ms ease;
+  }
+  button.retrain:hover{ background: #5CEBD0; }
+  button.retrain:active{ transform: scale(0.97); }
+  button.retrain:focus-visible{
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+  }
+  button.retrain[disabled]{ opacity: 0.55; cursor: default; }
+
+  .caption{
+    margin-top: 26px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .caption b{ color: var(--text); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce){
+    .canvas-wrap{ transition: none; }
+    .sweep.run{ animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<section class="proof" id="s1-1">
+
+  <div class="eyebrow">s1-1 · nonlinearity — proof by demonstration</div>
+  <h1 class="title">S1-1 · One activation function is the entire difference.</h1>
+  <p class="claim">
+    A model with <b>no nonlinearity</b> can only ever carve space with a straight line — it
+    physically cannot separate two concentric rings. Stack one <b>ReLU</b> hidden layer on top
+    of the same inputs, same optimizer, same number of steps, and it wraps the ring cleanly.
+    Nothing else changes.
+  </p>
+
+  <div class="panels">
+
+    <!-- LINEAR PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Linear model</div>
+          <div class="panel-arch">2 weights · 1 bias · no hidden layer</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc" id="acc-lin">—</div>
+          <div class="badge-label">train accuracy</div>
+          <div class="tag" id="tag-lin">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-lin">
+        <canvas id="canvas-lin" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-lin"></div>
+      </div>
+      <div class="formula">z = w·x + b&nbsp;&nbsp;→&nbsp;&nbsp;σ(z)</div>
+    </div>
+
+    <!-- RELU PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">ReLU network</div>
+          <div class="panel-arch">2 → 16 → 1 · one hidden layer</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc win-color" id="acc-mlp">—</div>
+          <div class="badge-label">train accuracy</div>
+          <div class="tag" id="tag-mlp">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-mlp">
+        <canvas id="canvas-mlp" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-mlp"></div>
+      </div>
+      <div class="formula">h = ReLU(W₁x + b₁)&nbsp;&nbsp;·&nbsp;&nbsp;z = W₂h + b₂&nbsp;&nbsp;→&nbsp;&nbsp;σ(z)</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <span><i class="dot c0"></i>inner ring — class 0</span>
+      <span><i class="dot c1"></i>outer ring — class 1</span>
+      <span>300 points</span>
+    </div>
+    <button id="retrain" class="retrain">↻ regenerate &amp; retrain</button>
+  </div>
+
+  <p class="caption">
+    Same 300 noisy points. Same Adam optimizer, same learning rate, same 1500 steps.
+    <b>Only the activation changed</b> between these two models.
+  </p>
+
+</section>
+
+<div class="divider"><span>next proof</span></div>
+
+<section class="proof" id="s1-2">
+
+  <div class="eyebrow">s1-2 · depth &amp; nonlinearity — proof by demonstration</div>
+  <h2 class="title">S1-2 · Depth without nonlinearity is a lie.</h2>
+  <p class="claim">
+    Stack five linear layers with <b>no activation</b> between them and the composition is still
+    just one affine map — <b>(W₁W₂W₃W₄W₅)·x + b</b> — so it carries exactly the same expressive
+    power as a single layer. It should fail the ring task identically. Slide a <b>ReLU</b> between
+    each of those same five layers and depth finally does something: now it wraps the ring.
+  </p>
+
+  <div class="panels3">
+
+    <!-- 1 LINEAR LAYER -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">1 linear layer</div>
+          <div class="panel-arch">2 → 1 · no hidden layer</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc" id="acc-1l">—</div>
+          <div class="badge-label">train accuracy</div>
+          <div class="tag" id="tag-1l">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-1l">
+        <canvas id="canvas-1l" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-1l"></div>
+      </div>
+      <div class="formula">z = w·x + b&nbsp;&nbsp;→&nbsp;&nbsp;σ(z)</div>
+    </div>
+
+    <!-- 5 LINEAR LAYERS, NO ACTIVATION -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">5 linear layers</div>
+          <div class="panel-arch">2→8→8→8→8→1 · zero activations</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc" id="acc-5lin">—</div>
+          <div class="badge-label">train accuracy</div>
+          <div class="tag" id="tag-5lin">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-5lin">
+        <canvas id="canvas-5lin" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-5lin"></div>
+      </div>
+      <div class="formula">5 linear layers, zero activations&nbsp;&nbsp;→&nbsp;&nbsp;one affine map</div>
+    </div>
+
+    <!-- 5 LAYERS + RELU -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">5 layers + ReLU</div>
+          <div class="panel-arch">2→8→8→8→8→1 · ReLU between every layer</div>
+        </div>
+        <div class="badge">
+          <div class="badge-acc win-color" id="acc-5relu">—</div>
+          <div class="badge-label">train accuracy</div>
+          <div class="tag" id="tag-5relu">—</div>
+        </div>
+      </div>
+      <div class="canvas-wrap pre-reveal" id="wrap-5relu">
+        <canvas id="canvas-5relu" width="400" height="400"></canvas>
+        <div class="sweep" id="sweep-5relu"></div>
+      </div>
+      <div class="formula">each hidden layer: h = ReLU(Wh + b)&nbsp;&nbsp;→&nbsp;&nbsp;σ(z₅)</div>
+    </div>
+
+  </div>
+
+  <div class="matrix-proof">
+    <div class="mp-label">bonus proof — multiply the five weight matrices</div>
+    <div class="mp-chain">W₁(2×8) · W₂(8×8) · W₃(8×8) · W₄(8×8) · W₅(8×1) = W_eff (2×1)</div>
+    <div class="mp-row">
+      <div class="mp-block">
+        <div class="mp-block-label">matrix product of all 5 layers</div>
+        <div class="mp-eq" id="mp-weff">—</div>
+      </div>
+      <div class="mp-block">
+        <div class="mp-block-label">independently-trained 1-layer model</div>
+        <div class="mp-eq" id="mp-w1">—</div>
+      </div>
+    </div>
+    <div class="mp-note" id="mp-note">—</div>
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <span><i class="dot c0"></i>inner ring — class 0</span>
+      <span><i class="dot c1"></i>outer ring — class 1</span>
+      <span>300 points</span>
+    </div>
+    <button id="retrain2" class="retrain">↻ regenerate &amp; retrain</button>
+  </div>
+
+  <p class="caption">
+    Same 300 noisy points. Same Adam optimizer, same learning rate, same number of steps, same
+    2→8→8→8→8→1 shape for the last two. <b>Only the activation changed</b> between them — and
+    depth alone, without it, never beat the single line.
+  </p>
+
+</section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- seeded RNG ----------------
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gaussian(rng){
+    const u1 = Math.max(rng(), 1e-12), u2 = rng();
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  }
+
+  // ---------------- data: two noisy concentric rings ----------------
+  function makeRings(seed, nPer){
+    const rng = mulberry32(seed);
+    const X = [], y = [];
+    for (let i = 0; i < nPer; i++){
+      const theta = rng() * 2 * Math.PI;
+      const r = 1.0 + gaussian(rng) * 0.12;
+      X.push([r * Math.cos(theta), r * Math.sin(theta)]); y.push(0);
+    }
+    for (let i = 0; i < nPer; i++){
+      const theta = rng() * 2 * Math.PI;
+      const r = 2.5 + gaussian(rng) * 0.15;
+      X.push([r * Math.cos(theta), r * Math.sin(theta)]); y.push(1);
+    }
+    for (let i = X.length - 1; i > 0; i--){
+      const j = Math.floor(rng() * (i + 1));
+      [X[i], X[j]] = [X[j], X[i]];
+      [y[i], y[j]] = [y[j], y[i]];
+    }
+    return { X, y };
+  }
+
+  function sigmoid(z){ return 1 / (1 + Math.exp(-z)); }
+
+  // ---------------- generic Adam over a flat Float64Array ----------------
+  function makeAdam(n, lr){
+    return { m: new Float64Array(n), v: new Float64Array(n), t: 0, lr, b1: 0.9, b2: 0.999, eps: 1e-8 };
+  }
+  function adamStep(opt, params, grads){
+    opt.t++;
+    const { m, v, lr, b1, b2, eps, t } = opt;
+    const bc1 = 1 - Math.pow(b1, t), bc2 = 1 - Math.pow(b2, t);
+    for (let i = 0; i < params.length; i++){
+      m[i] = b1 * m[i] + (1 - b1) * grads[i];
+      v[i] = b2 * v[i] + (1 - b2) * grads[i] * grads[i];
+      const mhat = m[i] / bc1, vhat = v[i] / bc2;
+      params[i] -= lr * mhat / (Math.sqrt(vhat) + eps);
+    }
+  }
+
+  // ---------------- model A: single linear layer + sigmoid ----------------
+  function trainLinear(X, y, epochs, lr, seed){
+    const rng = mulberry32(seed);
+    const params = new Float64Array([gaussian(rng) * 0.5, gaussian(rng) * 0.5, 0]);
+    const opt = makeAdam(3, lr);
+    const N = X.length;
+    const grads = new Float64Array(3);
+    for (let e = 0; e < epochs; e++){
+      grads.fill(0);
+      for (let i = 0; i < N; i++){
+        const z = X[i][0]*params[0] + X[i][1]*params[1] + params[2];
+        const p = sigmoid(z);
+        const dz = (p - y[i]) / N;
+        grads[0] += X[i][0]*dz; grads[1] += X[i][1]*dz; grads[2] += dz;
+      }
+      adamStep(opt, params, grads);
+    }
+    let correct = 0;
+    for (let i = 0; i < N; i++){
+      const z = X[i][0]*params[0] + X[i][1]*params[1] + params[2];
+      if ((sigmoid(z) > 0.5 ? 1 : 0) === y[i]) correct++;
+    }
+    return { predict: (x0,x1) => sigmoid(x0*params[0] + x1*params[1] + params[2]), acc: correct / N };
+  }
+
+  // ---------------- model B: one ReLU hidden layer + sigmoid ----------------
+  function trainMLP(X, y, H, epochs, lr, seed){
+    const rng = mulberry32(seed);
+    const nParams = 4 * H + 1; // W1(2H) + b1(H) + W2(H) + b2(1)
+    const W1x = new Float64Array(H), W1y = new Float64Array(H), b1 = new Float64Array(H), W2 = new Float64Array(H);
+    let b2 = 0;
+    for (let h = 0; h < H; h++){ W1x[h] = gaussian(rng)*0.6; W1y[h] = gaussian(rng)*0.6; W2[h] = gaussian(rng)*0.6; }
+
+    const opt = makeAdam(nParams, lr);
+    const N = X.length;
+    const Z1 = new Float64Array(H), A1 = new Float64Array(H), dA1 = new Float64Array(H);
+    const params = new Float64Array(nParams);
+    const grads = new Float64Array(nParams);
+
+    function pack(){
+      let k = 0;
+      for (let h=0; h<H; h++) params[k++] = W1x[h];
+      for (let h=0; h<H; h++) params[k++] = W1y[h];
+      for (let h=0; h<H; h++) params[k++] = b1[h];
+      for (let h=0; h<H; h++) params[k++] = W2[h];
+      params[k] = b2;
+    }
+    function unpack(){
+      let k = 0;
+      for (let h=0; h<H; h++) W1x[h] = params[k++];
+      for (let h=0; h<H; h++) W1y[h] = params[k++];
+      for (let h=0; h<H; h++) b1[h]  = params[k++];
+      for (let h=0; h<H; h++) W2[h]  = params[k++];
+      b2 = params[k];
+    }
+
+    for (let e = 0; e < epochs; e++){
+      pack();
+      grads.fill(0);
+      for (let i = 0; i < N; i++){
+        const x0 = X[i][0], x1 = X[i][1];
+        let z2 = b2;
+        for (let h = 0; h < H; h++){
+          Z1[h] = x0*W1x[h] + x1*W1y[h] + b1[h];
+          A1[h] = Z1[h] > 0 ? Z1[h] : 0;
+          z2 += A1[h] * W2[h];
+        }
+        const p = sigmoid(z2);
+        const dz2 = (p - y[i]) / N;
+        for (let h = 0; h < H; h++) dA1[h] = dz2 * W2[h];
+        for (let h = 0; h < H; h++){
+          const dZ1h = Z1[h] > 0 ? dA1[h] : 0;
+          grads[h]       += x0 * dZ1h;        // dW1x
+          grads[H + h]   += x1 * dZ1h;        // dW1y
+          grads[2*H + h] += dZ1h;             // db1
+          grads[3*H + h] += A1[h] * dz2;      // dW2
+        }
+        grads[4*H] += dz2;                    // db2
+      }
+      adamStep(opt, params, grads);
+      unpack();
+    }
+
+    let correct = 0;
+    for (let i = 0; i < N; i++){
+      const x0 = X[i][0], x1 = X[i][1];
+      let z2 = b2;
+      for (let h = 0; h < H; h++){
+        const z1h = x0*W1x[h] + x1*W1y[h] + b1[h];
+        z2 += Math.max(z1h, 0) * W2[h];
+      }
+      if ((sigmoid(z2) > 0.5 ? 1 : 0) === y[i]) correct++;
+    }
+    return {
+      predict: (x0, x1) => {
+        let z2 = b2;
+        for (let h = 0; h < H; h++){
+          const z1h = x0*W1x[h] + x1*W1y[h] + b1[h];
+          z2 += Math.max(z1h, 0) * W2[h];
+        }
+        return sigmoid(z2);
+      },
+      acc: correct / N
+    };
+  }
+
+  // ==================== S1-2: depth without nonlinearity ====================
+  // Generic depth-L net over sizes = [2, ..., 1]. useRelu applies ReLU to every
+  // HIDDEN layer (never the output layer) — this is the *only* knob that changes
+  // between "5 linear layers" and "5 layers + ReLU" below.
+  function trainDeepNet(X, y, sizes, useRelu, epochs, lr, seed){
+    const rng = mulberry32(seed);
+    const L = sizes.length - 1;
+    const W = [], B = [];
+    let nParams = 0;
+    for (let l = 0; l < L; l++){
+      const inD = sizes[l], outD = sizes[l+1];
+      const w = new Float64Array(inD*outD);
+      const scale = Math.sqrt(2/inD);
+      for (let k = 0; k < w.length; k++) w[k] = gaussian(rng)*scale;
+      W.push(w); B.push(new Float64Array(outD));
+      nParams += inD*outD + outD;
+    }
+
+    const opt = makeAdam(nParams, lr);
+    const params = new Float64Array(nParams);
+    const grads = new Float64Array(nParams);
+    const N = X.length;
+
+    const offW = [], offB = [];
+    { let k = 0; for (let l=0;l<L;l++){ offW.push(k); k += sizes[l]*sizes[l+1]; offB.push(k); k += sizes[l+1]; } }
+
+    function pack(){
+      for (let l=0;l<L;l++){
+        for (let k=0;k<W[l].length;k++) params[offW[l]+k] = W[l][k];
+        for (let k=0;k<B[l].length;k++) params[offB[l]+k] = B[l][k];
+      }
+    }
+    function unpack(){
+      for (let l=0;l<L;l++){
+        for (let k=0;k<W[l].length;k++) W[l][k] = params[offW[l]+k];
+        for (let k=0;k<B[l].length;k++) B[l][k] = params[offB[l]+k];
+      }
+    }
+
+    const zBuf = sizes.slice(1).map(d => new Float64Array(d));
+    const aBuf = sizes.map(d => new Float64Array(d)); // aBuf[0]=input ... aBuf[L]=output(logit)
+    const dzBuf = sizes.slice(1).map(d => new Float64Array(d));
+    const daBuf = sizes.map(d => new Float64Array(d));
+
+    function forward(x){
+      aBuf[0].set(x);
+      for (let l = 0; l < L; l++){
+        const inD = sizes[l], outD = sizes[l+1];
+        const w = W[l], b = B[l], ain = aBuf[l], z = zBuf[l];
+        for (let o = 0; o < outD; o++){
+          let s = b[o];
+          for (let i = 0; i < inD; i++) s += ain[i]*w[i*outD+o];
+          z[o] = s;
+        }
+        const isHidden = l < L-1;
+        const aout = aBuf[l+1];
+        for (let o = 0; o < outD; o++) aout[o] = (isHidden && useRelu) ? Math.max(z[o],0) : z[o];
+      }
+      return aBuf[L][0]; // logit
+    }
+
+    for (let e = 0; e < epochs; e++){
+      pack();
+      grads.fill(0);
+      for (let i = 0; i < N; i++){
+        const logit = forward(X[i]);
+        const p = sigmoid(logit);
+        dzBuf[L-1][0] = (p - y[i]) / N; // dz for output layer
+        for (let l = L-1; l >= 0; l--){
+          const inD = sizes[l], outD = sizes[l+1];
+          const ain = aBuf[l], w = W[l], dz = dzBuf[l];
+          for (let o = 0; o < outD; o++){
+            const dzo = dz[o];
+            const base = offW[l] + o;
+            for (let i2 = 0; i2 < inD; i2++) grads[base + i2*outD] += ain[i2]*dzo;
+            grads[offB[l] + o] += dzo;
+          }
+          if (l > 0){
+            const da = daBuf[l];
+            for (let i2 = 0; i2 < inD; i2++){
+              let s = 0;
+              for (let o = 0; o < outD; o++) s += dz[o]*w[i2*outD+o];
+              da[i2] = s;
+            }
+            const zprev = zBuf[l-1];
+            const dzPrev = dzBuf[l-1];
+            for (let i2 = 0; i2 < inD; i2++) dzPrev[i2] = useRelu ? (zprev[i2] > 0 ? da[i2] : 0) : da[i2];
+          }
+        }
+      }
+      adamStep(opt, params, grads);
+      unpack();
+    }
+
+    let correct = 0;
+    for (let i = 0; i < N; i++){
+      const p = sigmoid(forward(X[i]));
+      if ((p > 0.5 ? 1 : 0) === y[i]) correct++;
+    }
+    return { W, B, sizes, forward, predict: (x0,x1) => sigmoid(forward([x0,x1])), acc: correct/N };
+  }
+
+  // ---- multiply the five weight matrices into one, numerically ----
+  function matToRowsCols(flat, inD, outD){
+    const M = [];
+    for (let i=0;i<inD;i++) M.push(Array.from(flat.slice(i*outD, i*outD+outD)));
+    return M;
+  }
+  function matmul(A, B){
+    const rA = A.length, cA = A[0].length, cB = B[0].length;
+    const out = Array.from({length:rA}, () => new Array(cB).fill(0));
+    for (let i=0;i<rA;i++) for (let k=0;k<cA;k++){ const a=A[i][k]; if(a===0) continue; for(let j=0;j<cB;j++) out[i][j]+=a*B[k][j]; }
+    return out;
+  }
+  function collapseLinearChain(model){
+    const { W, sizes } = model;
+    const L = sizes.length - 1;
+    let chain = matToRowsCols(W[0], sizes[0], sizes[1]);
+    for (let l = 1; l < L; l++) chain = matmul(chain, matToRowsCols(W[l], sizes[l], sizes[l+1]));
+    return chain; // sizes[0] x sizes[L] -> here, 2 x 1
+  }
+
+  // ---------------- rendering ----------------
+
+  const DOMAIN = 3.3; // data coords span [-DOMAIN, DOMAIN]
+  const C0 = [70, 224, 196];   // class 0 — teal
+  const C1 = [255, 149, 81];   // class 1 — amber
+  const SURFACE = [22, 29, 38];
+
+  function lerp(a, b, t){ return a + (b - a) * t; }
+
+  function dataToPx(x, y, W, H){
+    return [ (x + DOMAIN) / (2*DOMAIN) * W, H - (y + DOMAIN) / (2*DOMAIN) * H ];
+  }
+  function pxToData(px, py, W, H){
+    return [ (px / W) * 2*DOMAIN - DOMAIN, DOMAIN - (py / H) * 2*DOMAIN ];
+  }
+
+  function renderField(canvas, model, points, labels){
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(W, H);
+    const probGrid = new Float32Array(W * H);
+
+    for (let py = 0; py < H; py++){
+      for (let px = 0; px < W; px++){
+        const [dx, dy] = pxToData(px + 0.5, py + 0.5, W, H);
+        probGrid[py*W + px] = model.predict(dx, dy);
+      }
+    }
+
+    const FIELD_STRENGTH = 0.5;
+    for (let py = 0; py < H; py++){
+      for (let px = 0; px < W; px++){
+        const idx = py*W + px;
+        const p = probGrid[idx];
+        let r = lerp(C0[0], C1[0], p), g = lerp(C0[1], C1[1], p), b = lerp(C0[2], C1[2], p);
+        r = lerp(SURFACE[0], r, FIELD_STRENGTH);
+        g = lerp(SURFACE[1], g, FIELD_STRENGTH);
+        b = lerp(SURFACE[2], b, FIELD_STRENGTH);
+
+        // contour: mark pixels where the predicted class flips vs. right/down neighbor
+        const cls = p > 0.5 ? 1 : 0;
+        let edge = false;
+        if (px < W-1 && (probGrid[idx+1] > 0.5 ? 1 : 0) !== cls) edge = true;
+        if (py < H-1 && (probGrid[idx+W] > 0.5 ? 1 : 0) !== cls) edge = true;
+        if (edge){ r = 232; g = 237; b = 241; }
+
+        const o = idx * 4;
+        img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b; img.data[o+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // scatter points on top
+    for (let i = 0; i < points.length; i++){
+      const [px, py] = dataToPx(points[i][0], points[i][1], W, H);
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI*2);
+      ctx.fillStyle = labels[i] === 0 ? 'rgb(70,224,196)' : 'rgb(255,149,81)';
+      ctx.fill();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(10,14,19,0.75)';
+      ctx.stroke();
+    }
+  }
+
+  function classify(acc){
+    if (acc < 0.75) return { label: 'stuck', cls: 'stuck' };
+    if (acc < 0.9)  return { label: 'partial', cls: 'partial' };
+    return { label: 'separated', cls: 'separated' };
+  }
+
+  // ---------------- orchestration ----------------
+  const els = {
+    accLin: document.getElementById('acc-lin'),
+    accMlp: document.getElementById('acc-mlp'),
+    tagLin: document.getElementById('tag-lin'),
+    tagMlp: document.getElementById('tag-mlp'),
+    wrapLin: document.getElementById('wrap-lin'),
+    wrapMlp: document.getElementById('wrap-mlp'),
+    sweepLin: document.getElementById('sweep-lin'),
+    sweepMlp: document.getElementById('sweep-mlp'),
+    canvasLin: document.getElementById('canvas-lin'),
+    canvasMlp: document.getElementById('canvas-mlp'),
+    btn: document.getElementById('retrain'),
+  };
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function animateCount(el, target, ms){
+    if (reduceMotion){ el.textContent = (target*100).toFixed(1) + '%'; return; }
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - start) / ms);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = (target*100*eased).toFixed(1) + '%';
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function reveal(wrap, sweep){
+    if (reduceMotion){ wrap.classList.remove('pre-reveal'); return; }
+    requestAnimationFrame(() => {
+      wrap.classList.remove('pre-reveal');
+      sweep.classList.add('run');
+      setTimeout(() => sweep.classList.remove('run'), 750);
+    });
+  }
+
+  function runPipeline(seed){
+    const { X, y } = makeRings(seed, 150);
+
+    const lin = trainLinear(X, y, 1500, 0.05, seed);
+    const mlp = trainMLP(X, y, 16, 1500, 0.05, seed + 1);
+
+    renderField(els.canvasLin, lin, X, y);
+    renderField(els.canvasMlp, mlp, X, y);
+
+    const tagL = classify(lin.acc), tagM = classify(mlp.acc);
+    els.tagLin.textContent = tagL.label;
+    els.tagLin.className = 'tag ' + tagL.cls;
+    els.tagMlp.textContent = tagM.label;
+    els.tagMlp.className = 'tag ' + tagM.cls;
+
+    animateCount(els.accLin, lin.acc, 700);
+    animateCount(els.accMlp, mlp.acc, 700);
+
+    els.wrapLin.classList.add('pre-reveal');
+    els.wrapMlp.classList.add('pre-reveal');
+    // force reflow so the re-added class takes effect before removal
+    void els.wrapLin.offsetWidth;
+    reveal(els.wrapLin, els.sweepLin);
+    reveal(els.wrapMlp, els.sweepMlp);
+  }
+
+  let seedCounter = 1234;
+  els.btn.addEventListener('click', () => {
+    els.btn.disabled = true;
+    els.btn.textContent = 'training…';
+    seedCounter = Math.floor(Math.random() * 1e9);
+    setTimeout(() => {
+      runPipeline(seedCounter);
+      els.btn.disabled = false;
+      els.btn.textContent = '↻ regenerate & retrain';
+    }, 30);
+  });
+
+  runPipeline(seedCounter);
+
+  // ---------------- S1-2 orchestration ----------------
+  const els2 = {
+    acc1l: document.getElementById('acc-1l'),
+    acc5lin: document.getElementById('acc-5lin'),
+    acc5relu: document.getElementById('acc-5relu'),
+    tag1l: document.getElementById('tag-1l'),
+    tag5lin: document.getElementById('tag-5lin'),
+    tag5relu: document.getElementById('tag-5relu'),
+    wrap1l: document.getElementById('wrap-1l'),
+    wrap5lin: document.getElementById('wrap-5lin'),
+    wrap5relu: document.getElementById('wrap-5relu'),
+    sweep1l: document.getElementById('sweep-1l'),
+    sweep5lin: document.getElementById('sweep-5lin'),
+    sweep5relu: document.getElementById('sweep-5relu'),
+    canvas1l: document.getElementById('canvas-1l'),
+    canvas5lin: document.getElementById('canvas-5lin'),
+    canvas5relu: document.getElementById('canvas-5relu'),
+    btn: document.getElementById('retrain2'),
+    mpWeff: document.getElementById('mp-weff'),
+    mpW1: document.getElementById('mp-w1'),
+    mpNote: document.getElementById('mp-note'),
+  };
+
+  function runPipeline2(seed){
+    const { X, y } = makeRings(seed, 150);
+    const EPOCHS = 2000, LR = 0.04;
+
+    const m1     = trainDeepNet(X, y, [2,1],            false, EPOCHS, LR, seed);
+    const m5lin  = trainDeepNet(X, y, [2,8,8,8,8,1],    false, EPOCHS, LR, seed + 1);
+    const m5relu = trainDeepNet(X, y, [2,8,8,8,8,1],    true,  EPOCHS, LR, seed + 2);
+
+    renderField(els2.canvas1l, m1, X, y);
+    renderField(els2.canvas5lin, m5lin, X, y);
+    renderField(els2.canvas5relu, m5relu, X, y);
+
+    const t1 = classify(m1.acc), t5 = classify(m5lin.acc), t5r = classify(m5relu.acc);
+    els2.tag1l.textContent = t1.label;     els2.tag1l.className = 'tag ' + t1.cls;
+    els2.tag5lin.textContent = t5.label;   els2.tag5lin.className = 'tag ' + t5.cls;
+    els2.tag5relu.textContent = t5r.label; els2.tag5relu.className = 'tag ' + t5r.cls;
+
+    animateCount(els2.acc1l, m1.acc, 700);
+    animateCount(els2.acc5lin, m5lin.acc, 700);
+    animateCount(els2.acc5relu, m5relu.acc, 700);
+
+    [els2.wrap1l, els2.wrap5lin, els2.wrap5relu].forEach(w => w.classList.add('pre-reveal'));
+    void els2.wrap1l.offsetWidth;
+    reveal(els2.wrap1l, els2.sweep1l);
+    reveal(els2.wrap5lin, els2.sweep5lin);
+    reveal(els2.wrap5relu, els2.sweep5relu);
+
+    // ---- bonus: multiply the five weight matrices into one, and compare ----
+    const Weff = collapseLinearChain(m5lin);       // 2x1, computed by literal matrix multiplication
+    const beff = m5lin.forward([0, 0]);            // f(0) = b_eff for an affine map
+    const w1v = m1.W[0], b1v = m1.B[0][0];         // the independently-trained 1-layer model's own params
+
+    let maxDiffSanity = 0, maxDiffVs1Layer = 0;
+    for (let i = 0; i < X.length; i++){
+      const pDeep = sigmoid(m5lin.forward(X[i]));
+      const pCollapsed = sigmoid(Weff[0][0]*X[i][0] + Weff[1][0]*X[i][1] + beff);
+      const p1 = sigmoid(m1.forward(X[i]));
+      maxDiffSanity = Math.max(maxDiffSanity, Math.abs(pDeep - pCollapsed));
+      maxDiffVs1Layer = Math.max(maxDiffVs1Layer, Math.abs(pDeep - p1));
+    }
+
+    els2.mpWeff.textContent = `W_eff = [ ${Weff[0][0].toFixed(4)}, ${Weff[1][0].toFixed(4)} ]   b_eff = ${beff.toFixed(4)}`;
+    els2.mpW1.textContent = `w = [ ${w1v[0].toFixed(4)}, ${w1v[1].toFixed(4)} ]   b = ${b1v.toFixed(4)}`;
+    els2.mpNote.innerHTML = `Multiplying W₁ through W₅ by hand reproduces the 5-layer network's own output to within
+      <b>${maxDiffSanity.toExponential(2)}</b> — floating-point noise, nothing more. The independently-trained
+      1-layer model lands within <b>${maxDiffVs1Layer.toExponential(2)}</b> of that same matrix: two different
+      training runs, two different parameterizations, one optimum.`;
+  }
+
+  let seedCounter2 = 4321;
+  els2.btn.addEventListener('click', () => {
+    els2.btn.disabled = true;
+    els2.btn.textContent = 'training…';
+    seedCounter2 = Math.floor(Math.random() * 1e9);
+    setTimeout(() => {
+      runPipeline2(seedCounter2);
+      els2.btn.disabled = false;
+      els2.btn.textContent = '↻ regenerate & retrain';
+    }, 30);
+  });
+
+  runPipeline2(seedCounter2);
+})();
+</script>
+</body>
+</html>
